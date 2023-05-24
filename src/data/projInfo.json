@@ -1,9 +1,9 @@
 {
 	"$schema": "./projInfo-schema.json",
 
-	"title": "Profectus",
-	"description": "A project made in Profectus",
-	"id": "",
+	"title": "RLTree",
+	"description": "Shadow Wizard Money Gang",
+	"id": "RLTREETENTATIVEID",
 	"author": "",
 	"discordName": "",
 	"discordLink": "",

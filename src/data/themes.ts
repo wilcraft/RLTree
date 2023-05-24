@@ -65,7 +65,7 @@ const defaultTheme: Theme = {
         "--feature-margin": "0px"
     },
     floatingTabs: true,
-    mergeAdjacent: true,
+    mergeAdjacent: false,
     showPin: true
 };
 

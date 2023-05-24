@@ -12,33 +12,38 @@ import type { DecimalSource } from "util/bignum";
 import Decimal, { format, formatTime } from "util/bignum";
 import { render } from "util/vue";
 import { computed, toRaw } from "vue";
-import prestige from "./layers/prestige";
+import manalayer from "./layers/mana";
+import { createUpgrade, Upgrade } from "features/upgrades/upgrade";
+import { createCostRequirement } from "game/requirements";
+import { noPersist } from "game/persistence";
 
 /**
  * @hidden
  */
 export const main = createLayer("main", function (this: BaseLayer) {
-    const points = createResource<DecimalSource>(10);
-    const best = trackBest(points);
-    const total = trackTotal(points);
+    const mana = createResource<DecimalSource>(10, "Mana");
+    const best = trackBest(mana);
+    const total = trackTotal(mana);
 
-    const pointGain = computed(() => {
+    const manaGain = computed(() => {
         // eslint-disable-next-line prefer-const
-        let gain = new Decimal(1);
+        let gain = new Decimal(1).add(manalayer.studyArcaneMod.apply(0));
+        gain = gain.multiply(manalayer.delveArcaneMod.apply(1));
         return gain;
     });
+
     globalBus.on("update", diff => {
-        points.value = Decimal.add(points.value, Decimal.times(pointGain.value, diff));
+        mana.value = Decimal.add(mana.value, Decimal.times(manaGain.value, diff));
     });
-    const oomps = trackOOMPS(points, pointGain);
+    const oomps = trackOOMPS(mana, manaGain);
 
     const tree = createTree(() => ({
-        nodes: [[prestige.treeNode]],
+        nodes: [[manalayer.treeNode]],
         branches: [],
         onReset() {
-            points.value = toRaw(this.resettingNode.value) === toRaw(prestige.treeNode) ? 0 : 10;
-            best.value = points.value;
-            total.value = points.value;
+            mana.value = toRaw(this.resettingNode.value) === toRaw(manalayer.treeNode) ? 0 : 10;
+            best.value = mana.value;
+            total.value = mana.value;
         },
         resetPropagation: branchedResetPropagation
     })) as GenericTree;
@@ -56,20 +61,20 @@ export const main = createLayer("main", function (this: BaseLayer) {
                     <div>Offline Time: {formatTime(player.offlineTime)}</div>
                 ) : null}
                 <div>
-                    {Decimal.lt(points.value, "1e1000") ? <span>You have </span> : null}
-                    <h2>{format(points.value)}</h2>
-                    {Decimal.lt(points.value, "1e1e6") ? <span> points</span> : null}
+                    {Decimal.lt(mana.value, "1e1000") ? <span>You have </span> : null}
+                    <h2>{format(mana.value)}</h2>
+                    {Decimal.lt(mana.value, "1e1e6") ? <span> mana</span> : null}
                 </div>
-                {Decimal.gt(pointGain.value, 0) ? <div>({oomps.value})</div> : null}
+                {Decimal.gt(manaGain.value, 0) ? <div>({oomps.value})</div> : null}
                 <Spacer />
                 {render(tree)}
             </>
         )),
-        points,
+        mana,
         best,
         total,
         oomps,
-        tree
+        tree,
     };
 });
 
@@ -80,7 +85,7 @@ export const main = createLayer("main", function (this: BaseLayer) {
 export const getInitialLayers = (
     /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
     player: Partial<Player>
-): Array<GenericLayer> => [main, prestige];
+): Array<GenericLayer> => [main, manalayer];
 
 /**
  * A computed ref whose value is true whenever the game is over.
