@@ -6,16 +6,19 @@ import { branchedResetPropagation, createTree } from "features/trees/tree";
 import { globalBus } from "game/events";
 import type { BaseLayer, GenericLayer } from "game/layers";
 import { createLayer } from "game/layers";
-import type { Player } from "game/player";
+import type { LayerData, Player } from "game/player";
 import player from "game/player";
 import type { DecimalSource } from "util/bignum";
 import Decimal, { format, formatTime } from "util/bignum";
 import { render } from "util/vue";
 import { computed, toRaw } from "vue";
 import manalayer from "./layers/mana";
+import goldlayer from "./layers/gold";
 import { createUpgrade, Upgrade } from "features/upgrades/upgrade";
 import { createCostRequirement } from "game/requirements";
 import { noPersist } from "game/persistence";
+import arcanum from "./layers/arcanum";
+import madness from "./layers/madness";
 
 /**
  * @hidden
@@ -27,8 +30,10 @@ export const main = createLayer("main", function (this: BaseLayer) {
 
     const manaGain = computed(() => {
         // eslint-disable-next-line prefer-const
-        let gain = new Decimal(1).add(manalayer.studyArcaneMod.apply(0));
+        let gain = new Decimal(1);
+        gain = gain.add(manalayer.studyArcaneMod.apply(0)).add(manalayer.broadenHorizonsMod.apply(0));
         gain = gain.multiply(manalayer.delveArcaneMod.apply(1));
+        gain = gain.multiply(arcanum.arcaneFocusMod.apply(1)).multiply(arcanum.arcaneSecretsMod.apply(1));
         return gain;
     });
 
@@ -38,10 +43,14 @@ export const main = createLayer("main", function (this: BaseLayer) {
     const oomps = trackOOMPS(mana, manaGain);
 
     const tree = createTree(() => ({
-        nodes: [[manalayer.treeNode]],
+        nodes: [
+            [manalayer.treeNode, goldlayer.treeNode, madness.treeNode],
+            [arcanum.treeNode]
+        ],
         branches: [],
         onReset() {
             mana.value = toRaw(this.resettingNode.value) === toRaw(manalayer.treeNode) ? 0 : 10;
+            goldlayer.gold.value = 0;
             best.value = mana.value;
             total.value = mana.value;
         },
@@ -85,7 +94,13 @@ export const main = createLayer("main", function (this: BaseLayer) {
 export const getInitialLayers = (
     /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
     player: Partial<Player>
-): Array<GenericLayer> => [main, manalayer];
+): Array<GenericLayer> => {
+    const layers: GenericLayer[] = [main, manalayer, goldlayer, arcanum, madness];
+    // if ((player.layers?.gold as LayerData<typeof goldlayer>)?.buyScriptumArcanum?.bought) {
+    //     layers.push(arcanum);
+    // }
+    return layers;
+}
 
 /**
  * A computed ref whose value is true whenever the game is over.

@@ -11,16 +11,22 @@ import MainDisplay from "features/resources/MainDisplay.vue";
 import { createResource, trackOOMPS } from "features/resources/resource";
 import { addTooltip } from "features/tooltips/tooltip";
 import { createResourceTooltip } from "features/trees/tree";
-import { BaseLayer, createLayer } from "game/layers";
+import { BaseLayer, addLayer, createLayer } from "game/layers";
 import type { DecimalSource } from "util/bignum";
 import { render, renderRow } from "util/vue";
 import { createLayerTreeNode, createResetButton } from "../common";
 import { createUpgrade } from "features/upgrades/upgrade";
 import { noPersist } from "game/persistence";
-import { createCostRequirement } from "game/requirements";
+import { createBooleanRequirement, createCostRequirement, requirementsMet } from "game/requirements";
 import Decimal from "util/bignum";
 import { createSequentialModifier, createMultiplicativeModifier, createModifierSection, createAdditiveModifier } from "game/modifiers";
 import { computed } from "vue";
+import { createClickable } from "features/clickables/clickable";
+import { formatWhole } from "util/break_eternity";
+import Formula from "game/formulas/formulas";
+import goldlayer from "./gold";
+import player from "game/player";
+
 
 const id = "M";
 const layer = createLayer(id, function (this: BaseLayer) {
@@ -32,13 +38,15 @@ const layer = createLayer(id, function (this: BaseLayer) {
         color,
     }));
 
-    
     const studyArcaneUpg = createUpgrade(() => ({
         requirements: createCostRequirement(() => ({
-            resource: main.mana,
+            resource: noPersist(main.mana),
             cost: 10
         })),
-        display: "Gain 1 mana/second"
+        display: {
+            title: "Study the Arcane",
+            description: "Add 1 to mana gain"
+        }
     }));
     const studyArcaneMod = createSequentialModifier(() => [
         createAdditiveModifier(() => ({
@@ -49,10 +57,13 @@ const layer = createLayer(id, function (this: BaseLayer) {
 
     const delveArcaneUpg = createUpgrade(() => ({
         requirements: createCostRequirement(() => ({
-            resource: main.mana,
+            resource: noPersist(main.mana),
             cost: 40
         })),
-        display: "Double mana gain"
+        display: {
+            title: "Delve into the Arcane",
+            description: "Double mana gain"
+        }
     }));
     const delveArcaneMod = createSequentialModifier(() => [
         createMultiplicativeModifier(() => ({
@@ -61,22 +72,57 @@ const layer = createLayer(id, function (this: BaseLayer) {
         }))
     ]);
 
+    const broadenHorizonsUpg = createUpgrade(() => ({
+        requirements: createCostRequirement(() => ({
+            resource: noPersist(main.mana),
+            cost: 100
+        })),
+        display: {
+            title: "Broaden Your Horizons",
+            description: "Add 3 to mana gain"
+        }
+    }));
+    const broadenHorizonsMod = createSequentialModifier(() => [
+        createAdditiveModifier(() => ({
+            addend: 3,
+            enabled: broadenHorizonsUpg.bought
+        }))
+    ]);
+
+    const hostMagicShow = createClickable(() => ({
+        requirements: createBooleanRequirement(() => Decimal.gt(main.mana.value, 10)),
+        display: {
+            title: "Host a Magic Show",
+            description: `Spend 10 Mana for 1 Gold`
+        },
+        canClick: computed(() => Decimal.gt(main.mana.value, 10)),
+        onClick() {
+            main.mana.value = Decimal.sub(main.mana.value, 10);
+            goldlayer.gold.value = Decimal.add(goldlayer.gold.value, 1);
+        }
+    }));
+
+
     const ManaUpgrades = {studyArcaneUpg}
 
     return {
         name,
         color,
+        hostMagicShow,
         studyArcaneUpg,
         delveArcaneUpg,
         studyArcaneMod,
         delveArcaneMod,
+        broadenHorizonsUpg,
+        broadenHorizonsMod,
         display: jsx(() => (
             <>
                 <MainDisplay resource={main.mana} color={color} />
-                {renderRow(studyArcaneUpg, delveArcaneUpg)}
+                {render(hostMagicShow)}
+                {renderRow(studyArcaneUpg, delveArcaneUpg, broadenHorizonsUpg)}
             </>
         )),
-        treeNode,
+        treeNode
     };
 });
 
