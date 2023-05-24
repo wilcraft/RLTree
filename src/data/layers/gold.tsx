@@ -46,9 +46,6 @@ const layer = createLayer(id, function (this: BaseLayer) {
             requirement: `Buy the Scriptum Arcanum`,
             effectDisplay: 'Unlock Basic Arcane Spells'
         },
-        onComplete() {
-            addLayer(arcanum, player);
-        }
     })) as GenericAchievement;
 
     return {

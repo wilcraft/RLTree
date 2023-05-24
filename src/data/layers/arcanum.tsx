@@ -68,7 +68,7 @@ const layer = createLayer(id, function (this: BaseLayer) {
         }),
         onClick() {
             gazedIntoForbidden.value = true;
-            Decimal.add(madness.madness.value, 1);
+            madness.madness.value = Decimal.add(madness.madness.value, 1);
         }
     }))
 
@@ -117,6 +117,7 @@ const layer = createLayer(id, function (this: BaseLayer) {
         }),
         onClick() {
             arcaneSecretsLeft.value = 10;
+            madness.madness.value = Decimal.add(madness.madness.value, 1);
         }
     }));
 
